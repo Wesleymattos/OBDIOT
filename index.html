@@ -2,30 +2,24 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>OBDIOT Tracker (Free Map)</title>
+  <title>OBDIOT Tracker (Real Time)</title>
 
-  <!-- Leaflet (MAPA GRATUITO) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
   <style>
-    #map {
-      height: 100vh;
-      width: 100%;
-    }
+    #map { height: 100vh; width: 100%; }
   </style>
 </head>
 
 <body>
-
 <div id="map"></div>
 
 <script>
-  // 🔥 FIREBASE (SEU PROJETO)
+  // 🔥 FIREBASE
   const firebaseConfig = {
     apiKey: "AIzaSyA4z1-kAAGh6dq6nPf3ycHYVrb-gwCJnfU",
     authDomain: "obdiot.firebaseapp.com",
@@ -39,27 +33,83 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  // 🌍 MAPA GRATUITO (OpenStreetMap)
+  // 🌍 MAPA
   const map = L.map('map').setView([-29.84, -50.88], 15);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
+    attribution: '&copy; OpenStreetMap'
   }).addTo(map);
 
-  // 📍 MARCADOR
-  let marker = L.marker([-29.84, -50.88]).addTo(map);
+  // 👥 markers
+  const markers = {};
 
-  // 📡 FIREBASE REALTIME
-  db.ref("location").on("value", (snapshot) => {
-    const data = snapshot.val();
+  // 🚗 ÍCONES
+  const carIcon = L.icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/744/744465.png",
+    iconSize: [35, 35]
+  });
 
-    if (data) {
-      const pos = [data.lat, data.lng];
+  const walkIcon = L.icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/1946/1946429.png",
+    iconSize: [30, 30]
+  });
 
-      marker.setLatLng(pos);
-      map.setView(pos);
+  // =========================
+  // 🔥 REALTIME FIREBASE
+  // =========================
+
+  const usersRef = db.ref("users");
+
+  usersRef.on("child_added", snap => {
+    updateUser(snap.key, snap.val());
+  });
+
+  usersRef.on("child_changed", snap => {
+    updateUser(snap.key, snap.val());
+  });
+
+  usersRef.on("child_removed", snap => {
+    const id = snap.key;
+    if (markers[id]) {
+      map.removeLayer(markers[id]);
+      delete markers[id];
     }
   });
+
+  function updateUser(id, u) {
+
+    if (!u) return;
+    if (u.lat == null || u.lng == null) return;
+
+    const lat = Number(u.lat);
+    const lng = Number(u.lng);
+
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    const pos = [lat, lng];
+
+    const icon = (u.icon === "car") ? carIcon : walkIcon;
+
+    const speed = Number(u.speed || 0).toFixed(1);
+    const battery = (u.battery != null) ? u.battery : "?";
+
+    const popup = `
+      <b>${u.name || "Sem nome"}</b><br>
+      📱 ${u.model || "Desconhecido"}<br>
+      ⚡ ${speed} km/h<br>
+      🔋 ${battery}%<br>
+      ${u.icon === "car" ? "🚗 Carro" : "🚶 Pedestre"}
+    `;
+
+    if (markers[id]) {
+      markers[id].setLatLng(pos);
+      markers[id].setPopupContent(popup);
+    } else {
+      markers[id] = L.marker(pos, { icon })
+        .addTo(map)
+        .bindPopup(popup);
+    }
+  }
 
 </script>
 

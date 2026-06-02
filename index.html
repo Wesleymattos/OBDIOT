@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>OBDIOT Tracker (Free Map)</title>
+
+  <!-- Leaflet (MAPA GRATUITO) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+  <style>
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<script>
+  // 🔥 FIREBASE (SEU PROJETO)
+  const firebaseConfig = {
+    apiKey: "AIzaSyA4z1-kAAGh6dq6nPf3ycHYVrb-gwCJnfU",
+    authDomain: "obdiot.firebaseapp.com",
+    databaseURL: "https://obdiot-default-rtdb.firebaseio.com",
+    projectId: "obdiot",
+    storageBucket: "obdiot.firebasestorage.app",
+    messagingSenderId: "409558110291",
+    appId: "1:409558110291:web:a711c0a5a9e468162376a6"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // 🌍 MAPA GRATUITO (OpenStreetMap)
+  const map = L.map('map').setView([-29.84, -50.88], 15);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  // 📍 MARCADOR
+  let marker = L.marker([-29.84, -50.88]).addTo(map);
+
+  // 📡 FIREBASE REALTIME
+  db.ref("location").on("value", (snapshot) => {
+    const data = snapshot.val();
+
+    if (data) {
+      const pos = [data.lat, data.lng];
+
+      marker.setLatLng(pos);
+      map.setView(pos);
+    }
+  });
+
+</script>
+
+</body>
+</html>

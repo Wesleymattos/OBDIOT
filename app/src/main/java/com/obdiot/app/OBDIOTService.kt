@@ -1,0 +1,124 @@
+package com.obdiot.app
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.os.*
+import androidx.core.app.NotificationCompat
+import com.google.android.gms.location.*
+import com.google.firebase.database.FirebaseDatabase
+
+import android.os.Vibrator
+import android.os.VibrationEffect
+
+import com.google.firebase.database.*
+
+class OBDIOTService : Service() {
+
+
+    private lateinit var vibrator: Vibrator
+    private var isVibrating = false
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var locationCallback: LocationCallback
+
+    private val db = FirebaseDatabase.getInstance().getReference("users")
+    private val userId = "user_" + System.currentTimeMillis()
+
+    private var userName = "Usuário"
+    private var userIcon = "car"
+
+    override fun onCreate() {
+        super.onCreate()
+
+
+
+        fusedLocationClient =
+            LocationServices.getFusedLocationProviderClient(this)
+    }
+
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int
+    ): Int {
+
+        userName = intent?.getStringExtra("name") ?: "Usuário"
+        userIcon = intent?.getStringExtra("icon") ?: "car"
+
+        startForegroundService()
+        startGPS()
+
+        return START_STICKY
+    }
+
+    private fun startForegroundService() {
+
+        val channelId = "obdiot_location_channel"
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "OBDIOT GPS",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
+        }
+
+        val notification: Notification = NotificationCompat.Builder(this, channelId)
+            .setContentTitle("OBDIOT ativo")
+            .setContentText("Rastreando localização em segundo plano")
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setOngoing(true)
+            .build()
+
+        startForeground(1, notification)
+    }
+
+    private fun startGPS() {
+
+        val request = LocationRequest.Builder(
+            Priority.PRIORITY_HIGH_ACCURACY,
+            3000
+        ).build()
+
+        locationCallback = object : LocationCallback() {
+            override fun onLocationResult(result: LocationResult) {
+
+                val loc = result.lastLocation ?: return
+
+                val speed = loc.speed * 3.6
+                val battery = getBattery()
+
+                val data = mapOf(
+                    "name" to userName,
+                    "model" to Build.MODEL,
+                    "icon" to userIcon,
+                    "lat" to loc.latitude,
+                    "lng" to loc.longitude,
+                    "speed" to speed,
+                    "battery" to battery,
+                    "timestamp" to System.currentTimeMillis()
+                )
+
+                db.child(userId).setValue(data)
+            }
+        }
+
+        fusedLocationClient.requestLocationUpdates(
+            request,
+            locationCallback,
+            mainLooper
+        )
+    }
+
+    private fun getBattery(): Int {
+        val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+        return bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+    }
+
+    override fun onBind(intent: Intent?) = null
+}

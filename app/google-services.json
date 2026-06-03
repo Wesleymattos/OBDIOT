@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "409558110291",
+    "firebase_url": "https://obdiot-default-rtdb.firebaseio.com",
+    "project_id": "obdiot",
+    "storage_bucket": "obdiot.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:409558110291:android:ee4940b80492731f2376a6",
+        "android_client_info": {
+          "package_name": "com.obdiot.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "409558110291-638i3bnk00m6cuptltdgatbe9ikomdfm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.obdiot.app",
+            "certificate_hash": "92f3f29714c397ced55a5c7f0ea0a2b75f6529cd"
+          }
+        },
+        {
+          "client_id": "409558110291-ega4drhkvcb2p1eoj3kjqm07tldde0jb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDudWpWT1vCfZwemSL4FUSnoc-jau9ywwo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "409558110291-ega4drhkvcb2p1eoj3kjqm07tldde0jb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

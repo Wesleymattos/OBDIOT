@@ -38,6 +38,8 @@
 <div id="map"></div>
 <button id="vibBtn">VIBRADOR OFF</button>
 
+  <button id="flashBtn">LANTERNA OFF</button>
+
 <script>
   // 🔥 FIREBASE
   const firebaseConfig = {
@@ -172,6 +174,30 @@
         .bindPopup(popup);
     }
   }
+
+  
+const flashRef = db.ref("control/flashlight");
+
+document.getElementById("flashBtn").onclick = () => {
+  flashRef.once("value").then(snap => {
+    flashRef.set(!snap.val());
+  });
+};
+
+flashRef.on("value", snap => {
+  const isOn = snap.val();
+  const btn = document.getElementById("flashBtn");
+
+  if (isOn) {
+    btn.style.background = "yellow";
+    btn.innerText = "LANTERNA ON";
+  } else {
+    btn.style.background = "black";
+    btn.style.color = "white";
+    btn.innerText = "LANTERNA OFF";
+  }
+});
+
 
 </script>
 

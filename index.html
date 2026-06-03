@@ -30,18 +30,32 @@
       background: red;
       box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
     }
+
+    #flashBtn {
+      position: absolute;
+      top: 80px;
+      right: 20px;
+      z-index: 9999;
+      padding: 15px 20px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      color: white;
+      cursor: pointer;
+      background: black;
+      box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
+    }
   </style>
 </head>
 
 <body>
 
 <div id="map"></div>
-<button id="vibBtn">VIBRADOR OFF</button>
 
-  <button id="flashBtn">LANTERNA OFF</button>
+<button id="vibBtn">VIBRADOR OFF</button>
+<button id="flashBtn">LANTERNA OFF</button>
 
 <script>
-  // 🔥 FIREBASE
   const firebaseConfig = {
     apiKey: "AIzaSyA4z1-kAAGh6dq6nPf3ycHYVrb-gwCJnfU",
     authDomain: "obdiot.firebaseapp.com",
@@ -55,7 +69,6 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  // 🌍 MAPA
   const map = L.map('map').setView([-29.84, -50.88], 15);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -75,23 +88,19 @@
   });
 
   // =========================
-  // 🔥 FIREBASE CONTROL
+  // 🔥 VIBRADOR GLOBAL
   // =========================
-
   const vibRef = db.ref("control/vibrador");
   const vibStatusRef = db.ref("status/vibradorAtivo");
 
-  // =========================
-  // 🔴 BOTÃO GLOBAL
-  // =========================
   document.getElementById("vibBtn").onclick = () => {
     vibRef.once("value").then(snap => {
+      vibRef.set(!!snap.val());
       vibRef.set(!snap.val());
     });
   };
 
   vibStatusRef.on("value", snap => {
-
     const isOn = snap.val();
     const btn = document.getElementById("vibBtn");
 
@@ -105,22 +114,20 @@
   });
 
   // =========================
-  // 🎯 VIBRAÇÃO POR USUÁRIO
+  // 🎯 USUÁRIO
   // =========================
-
   function toggleUser(userId) {
-
     const ref = db.ref("control/users/" + userId);
 
     ref.once("value").then(snap => {
-      ref.set(!snap.val());
+      const current = snap.val() || false;
+      ref.set(!current);
     });
   }
 
   // =========================
-  // 👥 USERS REALTIME
+  // 👥 USERS
   // =========================
-
   const usersRef = db.ref("users");
 
   usersRef.on("child_added", snap => updateUser(snap.key, snap.val()));
@@ -138,11 +145,7 @@
 
     if (!u || u.lat == null || u.lng == null) return;
 
-    const lat = Number(u.lat);
-    const lng = Number(u.lng);
-    if (isNaN(lat) || isNaN(lng)) return;
-
-    const pos = [lat, lng];
+    const pos = [Number(u.lat), Number(u.lng)];
 
     const icon = (u.icon === "car") ? carIcon : walkIcon;
 
@@ -153,14 +156,7 @@
       🔋 ${u.battery || "?"}%<br><br>
 
       <button onclick="toggleUser('${id}')"
-        style="
-          padding:6px 10px;
-          border:none;
-          border-radius:6px;
-          background:#ff4444;
-          color:white;
-          cursor:pointer;
-        ">
+        style="padding:6px 10px;border:none;border-radius:6px;background:#ff4444;color:white;cursor:pointer;">
         Vibrar este usuário
       </button>
     `;
@@ -175,29 +171,31 @@
     }
   }
 
-  
-const flashRef = db.ref("control/flashlight");
+  // =========================
+  // 🔦 LANTERNA
+  // =========================
+  const flashRef = db.ref("control/flashlight");
 
-document.getElementById("flashBtn").onclick = () => {
-  flashRef.once("value").then(snap => {
-    flashRef.set(!snap.val());
+  document.getElementById("flashBtn").onclick = () => {
+    flashRef.once("value").then(snap => {
+      flashRef.set(!snap.val());
+    });
+  };
+
+  flashRef.on("value", snap => {
+    const isOn = snap.val();
+    const btn = document.getElementById("flashBtn");
+
+    if (isOn) {
+      btn.style.background = "yellow";
+      btn.style.color = "black";
+      btn.innerText = "LANTERNA ON";
+    } else {
+      btn.style.background = "black";
+      btn.style.color = "white";
+      btn.innerText = "LANTERNA OFF";
+    }
   });
-};
-
-flashRef.on("value", snap => {
-  const isOn = snap.val();
-  const btn = document.getElementById("flashBtn");
-
-  if (isOn) {
-    btn.style.background = "yellow";
-    btn.innerText = "LANTERNA ON";
-  } else {
-    btn.style.background = "black";
-    btn.style.color = "white";
-    btn.innerText = "LANTERNA OFF";
-  }
-});
-
 
 </script>
 

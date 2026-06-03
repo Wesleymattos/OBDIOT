@@ -9,6 +9,7 @@
 
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 
   <style>
     #map {
@@ -16,9 +17,8 @@
       width: 100%;
     }
 
-    #vibBtn {
+    #vibBtn, #flashBtn {
       position: absolute;
-      top: 20px;
       right: 20px;
       z-index: 9999;
       padding: 15px 20px;
@@ -27,20 +27,15 @@
       font-size: 16px;
       color: white;
       cursor: pointer;
+    }
+
+    #vibBtn {
+      top: 20px;
       background: red;
     }
 
     #flashBtn {
-      position: absolute;
       top: 80px;
-      right: 20px;
-      z-index: 9999;
-      padding: 15px 20px;
-      border: none;
-      border-radius: 12px;
-      font-size: 16px;
-      color: white;
-      cursor: pointer;
       background: black;
     }
   </style>
@@ -54,6 +49,9 @@
 <button id="flashBtn">LANTERNA OFF</button>
 
 <script>
+  // =========================
+  // 🔥 FIREBASE INIT
+  // =========================
   const firebaseConfig = {
     apiKey: "AIzaSyA4z1-kAAGh6dq6nPf3ycHYVrb-gwCJnfU",
     authDomain: "obdiot.firebaseapp.com",
@@ -65,8 +63,24 @@
   };
 
   firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
 
+  const db = firebase.database();
+  const auth = firebase.auth();
+
+  // =========================
+  // 🔐 AUTH (OBRIGATÓRIO)
+  // =========================
+  auth.signInAnonymously()
+    .then(() => {
+      console.log("🔥 Firebase Auth OK (anônimo)");
+    })
+    .catch((e) => {
+      console.error("❌ Auth erro:", e);
+    });
+
+  // =========================
+  // 🗺 MAPA
+  // =========================
   const map = L.map('map').setView([-29.84, -50.88], 15);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -93,8 +107,7 @@
 
   document.getElementById("vibBtn").onclick = () => {
     vibRef.once("value").then(snap => {
-      const current = snap.val() === true;
-      vibRef.set(!current);
+      vibRef.set(!(snap.val() === true));
     });
   };
 
@@ -105,18 +118,6 @@
     btn.style.background = isOn ? "green" : "red";
     btn.innerText = isOn ? "VIBRADOR ON" : "VIBRADOR OFF";
   });
-
-  // =========================
-  // 🎯 USUÁRIO
-  // =========================
-  function toggleUser(userId) {
-    const ref = db.ref("control/users/" + userId);
-
-    ref.once("value").then(snap => {
-      const current = snap.val() === true;
-      ref.set(!current);
-    });
-  }
 
   // =========================
   // 👥 USERS
@@ -133,6 +134,14 @@
       delete markers[id];
     }
   });
+
+  function toggleUser(userId) {
+    const ref = db.ref("control/users/" + userId);
+
+    ref.once("value").then(snap => {
+      ref.set(!(snap.val() === true));
+    });
+  }
 
   function updateUser(id, u) {
     if (!u || u.lat == null || u.lng == null) return;
@@ -169,8 +178,7 @@
 
   document.getElementById("flashBtn").onclick = () => {
     flashRef.once("value").then(snap => {
-      const current = snap.val() === true;
-      flashRef.set(!current);
+      flashRef.set(!(snap.val() === true));
     });
   };
 

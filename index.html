@@ -11,12 +11,32 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
   <style>
-    #map { height: 100vh; width: 100%; }
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+
+    #vibBtn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      padding: 15px 20px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      color: white;
+      cursor: pointer;
+      background: red;
+      box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
+    }
   </style>
 </head>
 
 <body>
+
 <div id="map"></div>
+<button id="vibBtn">VIBRADOR OFF</button>
 
 <script>
   // 🔥 FIREBASE
@@ -40,10 +60,8 @@
     attribution: '&copy; OpenStreetMap'
   }).addTo(map);
 
-  // 👥 markers
   const markers = {};
 
-  // 🚗 ÍCONES
   const carIcon = L.icon({
     iconUrl: "https://cdn-icons-png.flaticon.com/512/744/744465.png",
     iconSize: [35, 35]
@@ -54,19 +72,11 @@
     iconSize: [30, 30]
   });
 
-  // =========================
-  // 🔥 REALTIME FIREBASE
-  // =========================
-
+  // 👥 USERS REALTIME
   const usersRef = db.ref("users");
 
-  usersRef.on("child_added", snap => {
-    updateUser(snap.key, snap.val());
-  });
-
-  usersRef.on("child_changed", snap => {
-    updateUser(snap.key, snap.val());
-  });
+  usersRef.on("child_added", snap => updateUser(snap.key, snap.val()));
+  usersRef.on("child_changed", snap => updateUser(snap.key, snap.val()));
 
   usersRef.on("child_removed", snap => {
     const id = snap.key;
@@ -78,27 +88,21 @@
 
   function updateUser(id, u) {
 
-    if (!u) return;
-    if (u.lat == null || u.lng == null) return;
+    if (!u || u.lat == null || u.lng == null) return;
 
     const lat = Number(u.lat);
     const lng = Number(u.lng);
-
     if (isNaN(lat) || isNaN(lng)) return;
 
     const pos = [lat, lng];
 
     const icon = (u.icon === "car") ? carIcon : walkIcon;
 
-    const speed = Number(u.speed || 0).toFixed(1);
-    const battery = (u.battery != null) ? u.battery : "?";
-
     const popup = `
       <b>${u.name || "Sem nome"}</b><br>
       📱 ${u.model || "Desconhecido"}<br>
-      ⚡ ${speed} km/h<br>
-      🔋 ${battery}%<br>
-      ${u.icon === "car" ? "🚗 Carro" : "🚶 Pedestre"}
+      ⚡ ${(u.speed || 0).toFixed(1)} km/h<br>
+      🔋 ${u.battery || "?"}%
     `;
 
     if (markers[id]) {
@@ -110,6 +114,30 @@
         .bindPopup(popup);
     }
   }
+
+  // 🔥 VIBRADOR CONTROL
+  const vibRef = db.ref("control/vibrador");
+  const vibStatusRef = db.ref("status/vibradorAtivo");
+
+  document.getElementById("vibBtn").onclick = () => {
+    vibRef.once("value").then(snap => {
+      vibRef.set(!snap.val());
+    });
+  };
+
+  vibStatusRef.on("value", snap => {
+
+    const isOn = snap.val();
+    const btn = document.getElementById("vibBtn");
+
+    if (isOn) {
+      btn.style.background = "green";
+      btn.innerText = "VIBRADOR ON";
+    } else {
+      btn.style.background = "red";
+      btn.innerText = "VIBRADOR OFF";
+    }
+  });
 
 </script>
 

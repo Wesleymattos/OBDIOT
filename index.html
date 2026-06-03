@@ -28,7 +28,6 @@
       color: white;
       cursor: pointer;
       background: red;
-      box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
     }
 
     #flashBtn {
@@ -43,7 +42,6 @@
       color: white;
       cursor: pointer;
       background: black;
-      box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
     }
   </style>
 </head>
@@ -95,22 +93,17 @@
 
   document.getElementById("vibBtn").onclick = () => {
     vibRef.once("value").then(snap => {
-      vibRef.set(!!snap.val());
-      vibRef.set(!snap.val());
+      const current = snap.val() === true;
+      vibRef.set(!current);
     });
   };
 
   vibStatusRef.on("value", snap => {
-    const isOn = snap.val();
+    const isOn = snap.val() === true;
     const btn = document.getElementById("vibBtn");
 
-    if (isOn) {
-      btn.style.background = "green";
-      btn.innerText = "VIBRADOR ON";
-    } else {
-      btn.style.background = "red";
-      btn.innerText = "VIBRADOR OFF";
-    }
+    btn.style.background = isOn ? "green" : "red";
+    btn.innerText = isOn ? "VIBRADOR ON" : "VIBRADOR OFF";
   });
 
   // =========================
@@ -120,7 +113,7 @@
     const ref = db.ref("control/users/" + userId);
 
     ref.once("value").then(snap => {
-      const current = snap.val() || false;
+      const current = snap.val() === true;
       ref.set(!current);
     });
   }
@@ -142,11 +135,9 @@
   });
 
   function updateUser(id, u) {
-
     if (!u || u.lat == null || u.lng == null) return;
 
     const pos = [Number(u.lat), Number(u.lng)];
-
     const icon = (u.icon === "car") ? carIcon : walkIcon;
 
     const popup = `
@@ -178,23 +169,18 @@
 
   document.getElementById("flashBtn").onclick = () => {
     flashRef.once("value").then(snap => {
-      flashRef.set(!snap.val());
+      const current = snap.val() === true;
+      flashRef.set(!current);
     });
   };
 
   flashRef.on("value", snap => {
-    const isOn = snap.val();
+    const isOn = snap.val() === true;
     const btn = document.getElementById("flashBtn");
 
-    if (isOn) {
-      btn.style.background = "yellow";
-      btn.style.color = "black";
-      btn.innerText = "LANTERNA ON";
-    } else {
-      btn.style.background = "black";
-      btn.style.color = "white";
-      btn.innerText = "LANTERNA OFF";
-    }
+    btn.style.background = isOn ? "yellow" : "black";
+    btn.style.color = isOn ? "black" : "white";
+    btn.innerText = isOn ? "LANTERNA ON" : "LANTERNA OFF";
   });
 
 </script>

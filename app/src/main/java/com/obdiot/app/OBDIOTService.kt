@@ -10,7 +10,6 @@ import android.os.*
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import com.google.firebase.database.FirebaseDatabase
-
 import android.os.Vibrator
 import android.os.VibrationEffect
 

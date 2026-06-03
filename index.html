@@ -72,7 +72,53 @@
     iconSize: [30, 30]
   });
 
+  // =========================
+  // 🔥 FIREBASE CONTROL
+  // =========================
+
+  const vibRef = db.ref("control/vibrador");
+  const vibStatusRef = db.ref("status/vibradorAtivo");
+
+  // =========================
+  // 🔴 BOTÃO GLOBAL
+  // =========================
+  document.getElementById("vibBtn").onclick = () => {
+    vibRef.once("value").then(snap => {
+      vibRef.set(!snap.val());
+    });
+  };
+
+  vibStatusRef.on("value", snap => {
+
+    const isOn = snap.val();
+    const btn = document.getElementById("vibBtn");
+
+    if (isOn) {
+      btn.style.background = "green";
+      btn.innerText = "VIBRADOR ON";
+    } else {
+      btn.style.background = "red";
+      btn.innerText = "VIBRADOR OFF";
+    }
+  });
+
+  // =========================
+  // 🎯 VIBRAÇÃO POR USUÁRIO
+  // =========================
+
+  function toggleUser(userId) {
+
+    const ref = db.ref("control/users/" + userId);
+
+    ref.once("value").then(snap => {
+      ref.set(!snap.val());
+    });
+  }
+
+  // =========================
   // 👥 USERS REALTIME
+  // =========================
+
   const usersRef = db.ref("users");
 
   usersRef.on("child_added", snap => updateUser(snap.key, snap.val()));
@@ -102,7 +148,19 @@
       <b>${u.name || "Sem nome"}</b><br>
       📱 ${u.model || "Desconhecido"}<br>
       ⚡ ${(u.speed || 0).toFixed(1)} km/h<br>
-      🔋 ${u.battery || "?"}%
+      🔋 ${u.battery || "?"}%<br><br>
+
+      <button onclick="toggleUser('${id}')"
+        style="
+          padding:6px 10px;
+          border:none;
+          border-radius:6px;
+          background:#ff4444;
+          color:white;
+          cursor:pointer;
+        ">
+        Vibrar este usuário
+      </button>
     `;
 
     if (markers[id]) {
@@ -114,30 +172,6 @@
         .bindPopup(popup);
     }
   }
-
-  // 🔥 VIBRADOR CONTROL
-  const vibRef = db.ref("control/vibrador");
-  const vibStatusRef = db.ref("status/vibradorAtivo");
-
-  document.getElementById("vibBtn").onclick = () => {
-    vibRef.once("value").then(snap => {
-      vibRef.set(!snap.val());
-    });
-  };
-
-  vibStatusRef.on("value", snap => {
-
-    const isOn = snap.val();
-    const btn = document.getElementById("vibBtn");
-
-    if (isOn) {
-      btn.style.background = "green";
-      btn.innerText = "VIBRADOR ON";
-    } else {
-      btn.style.background = "red";
-      btn.innerText = "VIBRADOR OFF";
-    }
-  });
 
 </script>
 

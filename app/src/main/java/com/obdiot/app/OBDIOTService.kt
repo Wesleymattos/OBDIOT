@@ -10,11 +10,16 @@ import android.os.*
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import com.google.firebase.database.*
+import android.hardware.camera2.CameraManager
 
 class OBDIOTService : Service() {
 
     private lateinit var vibrator: Vibrator
     private var isVibrating = false
+
+    private lateinit var cameraManager: CameraManager
+    private var cameraId: String = ""
+    private var isFlashing = false
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
@@ -40,6 +45,12 @@ class OBDIOTService : Service() {
         vibrator =
             getSystemService(VIBRATOR_SERVICE) as Vibrator
 
+
+        cameraManager =
+            getSystemService(Context.CAMERA_SERVICE) as CameraManager
+
+        cameraId =
+            cameraManager.cameraIdList[0]
         listenCommands()
     }
 
@@ -174,8 +185,68 @@ class OBDIOTService : Service() {
 
                 override fun onCancelled(error: DatabaseError) {}
             })
+
+
+        controlRef.child("flashlight")
+            .addValueEventListener(object : ValueEventListener {
+
+                override fun onDataChange(snapshot: DataSnapshot) {
+
+                    val flash =
+                        snapshot.getValue(Boolean::class.java) ?: false
+
+                    if (flash && !isFlashing) {
+
+                        isFlashing = true
+
+                        statusRef.child("flashAtivo")
+                            .setValue(true)
+
+                        startFlashBlink()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {}
+            })
     }
 
+
+    private fun startFlashBlink() {
+
+        Thread {
+
+            try {
+
+                repeat(10) {
+
+                    cameraManager.setTorchMode(
+                        cameraId,
+                        true
+                    )
+
+                    Thread.sleep(300)
+
+                    cameraManager.setTorchMode(
+                        cameraId,
+                        false
+                    )
+
+                    Thread.sleep(300)
+                }
+
+            } catch (_: Exception) {
+            }
+
+            isFlashing = false
+
+            controlRef.child("flashlight")
+                .setValue(false)
+
+            statusRef.child("flashAtivo")
+                .setValue(false)
+
+        }.start()
+    }
     private fun getBattery(): Int {
 
         val bm =

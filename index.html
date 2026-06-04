@@ -81,23 +81,24 @@
   // =========================
   // 🗺 MAPA
   // =========================
-  const map = L.map('map').setView([-29.84, -50.88], 15);
+  const map = L.map('map').setView([-29.84, -50.88], 20);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap'
   }).addTo(map);
 
   const markers = {};
+  let followedUser = null;
 
-  const carIcon = L.icon({
-    iconUrl: "https://cdn-icons-png.flaticon.com/512/744/744465.png",
-    iconSize: [35, 35]
-  });
+const carIcon = L.icon({
+  iconUrl: "https://cdn-icons-png.flaticon.com/512/744/744465.png",
+  iconSize: [60, 60]
+});
 
-  const walkIcon = L.icon({
-    iconUrl: "https://cdn-icons-png.flaticon.com/512/1946/1946429.png",
-    iconSize: [30, 30]
-  });
+const walkIcon = L.icon({
+  iconUrl: "https://cdn-icons-png.flaticon.com/512/1946/1946429.png",
+  iconSize: [55, 55]
+});
 
   // =========================
   // 🔥 VIBRADOR GLOBAL
@@ -142,35 +143,48 @@
       ref.set(!(snap.val() === true));
     });
   }
+  
+  function followUser(userId) {
+
+  followedUser = userId;
+
+  alert("Agora seguindo este usuário.");
+}
 
   function updateUser(id, u) {
     if (!u || u.lat == null || u.lng == null) return;
 
     const pos = [Number(u.lat), Number(u.lng)];
+
+    if (followedUser === id) {
+        map.flyTo(pos, map.getZoom(), {
+    animate: true,
+    duration: 0.5
+});
+    }
+
     const icon = (u.icon === "car") ? carIcon : walkIcon;
 
     const popup = `
-      <b>${u.name || "Sem nome"}</b><br>
-      📱 ${u.model || "Desconhecido"}<br>
-      ⚡ ${(u.speed || 0).toFixed(1)} km/h<br>
-      🔋 ${u.battery || "?"}%<br><br>
+  <b>${u.name || "Sem nome"}</b><br>
+  📱 ${u.model || "Desconhecido"}<br>
+  ⚡ ${(u.speed || 0).toFixed(1)} km/h<br>
+  🔋 ${u.battery || "?"}%<br><br>
 
-      <button onclick="toggleUser('${id}')"
-        style="padding:6px 10px;border:none;border-radius:6px;background:#ff4444;color:white;cursor:pointer;">
-        Vibrar este usuário
-      </button>
-    `;
-
+  <button onclick="followUser('${id}')"
+    style="padding:6px 10px;border:none;border-radius:6px;background:#0066ff;color:white;cursor:pointer;">
+    ⚓ Seguir usuário
+  </button>
+`;
     if (markers[id]) {
-      markers[id].setLatLng(pos);
-      markers[id].setPopupContent(popup);
+        markers[id].setLatLng(pos);
+        markers[id].setPopupContent(popup);
     } else {
-      markers[id] = L.marker(pos, { icon })
-        .addTo(map)
-        .bindPopup(popup);
+        markers[id] = L.marker(pos, { icon })
+            .addTo(map)
+            .bindPopup(popup);
     }
-  }
-
+}
   // =========================
   // 🔦 LANTERNA
   // =========================

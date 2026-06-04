@@ -164,7 +164,7 @@ fun MapScreen() {
         verticalArrangement = Arrangement.SpaceBetween
     ) {
 
-        // ===== TOP PANEL =====
+        // ===== TOP PANEL ======
         Column(
             modifier = Modifier
                 .fillMaxWidth()

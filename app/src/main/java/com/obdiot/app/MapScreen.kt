@@ -21,10 +21,6 @@ import org.osmdroid.views.overlay.Marker
 import androidx.preference.PreferenceManager
 import androidx.core.content.ContextCompat
 
-import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
-
 @Composable
 fun MapScreen() {
 
@@ -43,18 +39,20 @@ fun MapScreen() {
         FirebaseDatabase.getInstance().getReference("users")
     }
 
-    // 🗺️ MAPA
+    // 🗺 MAPA
     val mapView = remember { MapView(context) }
     val markers = remember { mutableMapOf<String, Marker>() }
 
-    // 📊 UI STATE
-    var selectedUser by remember { mutableStateOf("Nenhum") }
+    // 📊 UI STATE (CORRIGIDO)
+    var selectedUserId by remember { mutableStateOf<String?>(null) }
+    var selectedUserName by remember { mutableStateOf("Nenhum") }
+
     var speed by remember { mutableStateOf(0.0) }
     var battery by remember { mutableStateOf(0) }
 
     var firstLoad by remember { mutableStateOf(true) }
 
-    // ================= MAPA =================
+    // ================= MAP INIT =================
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = {
@@ -74,104 +72,131 @@ fun MapScreen() {
         }
     )
 
-    // ================= FUNÇÃO DE ESCALA =================
-    fun resizeDrawable(drawable: Drawable?, size: Int): Drawable? {
+    // ================= ICON SCALE =================
+    fun resizeDrawable(drawable: android.graphics.drawable.Drawable?, size: Int)
+            : android.graphics.drawable.Drawable? {
+
         if (drawable == null) return null
 
-        val bitmap = (drawable as BitmapDrawable).bitmap
-        val scaled = Bitmap.createScaledBitmap(bitmap, size, size, false)
+        val bitmap = (drawable as android.graphics.drawable.BitmapDrawable).bitmap
+        val scaled = android.graphics.Bitmap.createScaledBitmap(bitmap, size, size, false)
 
-        return BitmapDrawable(context.resources, scaled)
+        return android.graphics.drawable.BitmapDrawable(context.resources, scaled)
     }
 
-    // ================= FIREBASE =================
+    // ================= UPDATE USER =================
+    fun updateUser(child: DataSnapshot) {
+
+        val id = child.key ?: return
+
+        val name = child.child("name").getValue(String::class.java) ?: "Sem nome"
+
+        val lat = child.child("lat").getValue(Double::class.java)
+        val lng = child.child("lng").getValue(Double::class.java)
+
+        val speedValue = child.child("speed").getValue(Double::class.java) ?: 0.0
+        val batteryValue = child.child("battery").getValue(Int::class.java) ?: 0
+        val iconType = child.child("icon").getValue(String::class.java) ?: "walk"
+
+        if (lat == null || lng == null) return
+
+        val pos = GeoPoint(lat, lng)
+
+        // 📍 primeira centralização
+        if (firstLoad) {
+            mapView.controller.setCenter(pos)
+            firstLoad = false
+        }
+
+        val marker = markers[id] ?: Marker(mapView).apply {
+
+            setAnchor(
+                Marker.ANCHOR_CENTER,
+                Marker.ANCHOR_BOTTOM
+            )
+
+            setOnMarkerClickListener { _, _ ->
+
+                selectedUserId = id
+                selectedUserName = name
+                speed = speedValue
+                battery = batteryValue
+
+                mapView.controller.animateTo(pos)
+                true
+            }
+
+            mapView.overlays.add(this)
+            markers[id] = this
+        }
+
+        // 🔁 MOVE EM TEMPO REAL
+        marker.position = pos
+        marker.title = name
+
+        // 🚗 / 👤 ICON
+        val rawIcon = when (iconType) {
+            "car" -> ContextCompat.getDrawable(context, R.drawable.car)
+            else -> ContextCompat.getDrawable(context, R.drawable.walk)
+        }
+
+        marker.icon = resizeDrawable(rawIcon, 80)
+
+        // ================= UI UPDATE REALTIME =================
+        if (id == selectedUserId) {
+            selectedUserName = name
+            speed = speedValue
+            battery = batteryValue
+        }
+    }
+
+    // ================= FIREBASE REALTIME =================
     DisposableEffect(Unit) {
 
-        val listener = object : ValueEventListener {
+        val listener = object : ChildEventListener {
 
-            override fun onDataChange(snapshot: DataSnapshot) {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                updateUser(snapshot)
+            }
 
-                for (child in snapshot.children) {
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                updateUser(snapshot)
+            }
 
-                    val id = child.key ?: continue
-
-                    val name = child.child("name").getValue(String::class.java) ?: "Sem nome"
-                    val lat = child.child("lat").getValue(Double::class.java)
-                    val lng = child.child("lng").getValue(Double::class.java)
-
-                    val speedValue = child.child("speed").getValue(Double::class.java) ?: 0.0
-                    val batteryValue = child.child("battery").getValue(Int::class.java) ?: 0
-
-                    val iconType = child.child("icon").getValue(String::class.java) ?: "walk"
-
-                    if (lat == null || lng == null) continue
-
-                    val pos = GeoPoint(lat, lng)
-
-                    // 📍 centraliza primeira vez
-                    if (firstLoad) {
-                        mapView.controller.setCenter(pos)
-                        firstLoad = false
-                    }
-
-                    // ================= MARKER =================
-                    val marker = markers[id] ?: Marker(mapView).apply {
-
-                        setAnchor(
-                            Marker.ANCHOR_CENTER,
-                            Marker.ANCHOR_BOTTOM
-                        )
-
-                        setOnMarkerClickListener { _, _ ->
-                            selectedUser = name
-                            speed = speedValue
-                            battery = batteryValue
-
-                            mapView.controller.animateTo(pos)
-                            true
-                        }
-
-                        mapView.overlays.add(this)
-                        markers[id] = this
-                    }
-
-                    marker.position = pos
-                    marker.title = name
-
-                    // ================= ICON RESIZE =================
-                    val rawIcon = when (iconType) {
-                        "car" -> ContextCompat.getDrawable(context, R.drawable.car)
-                        else -> ContextCompat.getDrawable(context, R.drawable.walk)
-                    }
-
-                    marker.icon = resizeDrawable(rawIcon, 80) // 👈 TAMANHO AQUI
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                val id = snapshot.key ?: return
+                markers[id]?.let {
+                    mapView.overlays.remove(it)
+                    markers.remove(id)
                 }
             }
+
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
 
             override fun onCancelled(error: DatabaseError) {}
         }
 
-        usersRef.addValueEventListener(listener)
+        usersRef.addChildEventListener(listener)
 
         onDispose {
             usersRef.removeEventListener(listener)
         }
     }
 
-    // ================= UI OVERLAY =================
+    // ================= UI =================
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
 
-        // ===== TOP PANEL ======
+        // ===== TOP PANEL =====
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color.White.copy(alpha = 0.9f))
                 .padding(10.dp)
         ) {
-            Text("Usuário: $selectedUser")
+            Text("Usuário: $selectedUserName")
             Text("Velocidade: ${String.format("%.1f", speed)} km/h")
             Text("Bateria: $battery%")
         }
@@ -189,9 +214,7 @@ fun MapScreen() {
                         vibRef.setValue(snap.value != true)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Red
-                ),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("VIBRADOR TOGGLE")
@@ -205,9 +228,7 @@ fun MapScreen() {
                         flashRef.setValue(snap.value != true)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Black
-                ),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("LANTERNA TOGGLE", color = Color.White)

@@ -15,11 +15,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.google.firebase.database.FirebaseDatabase
 
+import org.osmdroid.config.Configuration
+import com.obdiot.app.MapScreen
 import android.os.Vibrator
 import android.os.VibrationEffect
 import android.content.Context
 
-private const val APP_VERSION = 3
+private const val APP_VERSION = 1
 
 class MainActivity : ComponentActivity() {
 
@@ -31,6 +33,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        Configuration.getInstance().userAgentValue = packageName
 
         checkForUpdates()
 
@@ -149,8 +153,15 @@ fun OBDIOTApp(
         ) {
 
             var logged by remember { mutableStateOf(false) }
+            var showMap by remember { mutableStateOf(false) }
+
             var name by remember { mutableStateOf("") }
             var icon by remember { mutableStateOf("car") }
+
+            if (showMap) {
+                MapScreen()
+                return@Surface
+            }
 
             if (logged) {
 
@@ -230,8 +241,10 @@ fun OBDIOTApp(
                             onUserSet(name, icon)
                             logged = true
                             onStartService()
+
+                            showMap = true
                         }
-                    ) {
+                    ){
                         Text("Entrar no sistema")
                     }
                 }

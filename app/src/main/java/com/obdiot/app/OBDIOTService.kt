@@ -9,22 +9,24 @@ import android.content.Intent
 import android.os.*
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
-import com.google.firebase.database.FirebaseDatabase
-import android.os.Vibrator
-import android.os.VibrationEffect
-
 import com.google.firebase.database.*
 
 class OBDIOTService : Service() {
 
-
     private lateinit var vibrator: Vibrator
     private var isVibrating = false
+
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
 
     private val db = FirebaseDatabase.getInstance().getReference("users")
     private val userId = "user_" + System.currentTimeMillis()
+
+    private val controlRef =
+        FirebaseDatabase.getInstance().getReference("control")
+
+    private val statusRef =
+        FirebaseDatabase.getInstance().getReference("status")
 
     private var userName = "Usuário"
     private var userIcon = "car"
@@ -32,10 +34,13 @@ class OBDIOTService : Service() {
     override fun onCreate() {
         super.onCreate()
 
-
-
         fusedLocationClient =
             LocationServices.getFusedLocationProviderClient(this)
+
+        vibrator =
+            getSystemService(VIBRATOR_SERVICE) as Vibrator
+
+        listenCommands()
     }
 
     override fun onStartCommand(
@@ -58,21 +63,26 @@ class OBDIOTService : Service() {
         val channelId = "obdiot_location_channel"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
             val channel = NotificationChannel(
                 channelId,
                 "OBDIOT GPS",
                 NotificationManager.IMPORTANCE_LOW
             )
-            val manager = getSystemService(NotificationManager::class.java)
+
+            val manager =
+                getSystemService(NotificationManager::class.java)
+
             manager.createNotificationChannel(channel)
         }
 
-        val notification: Notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("OBDIOT ativo")
-            .setContentText("Rastreando localização em segundo plano")
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .setOngoing(true)
-            .build()
+        val notification: Notification =
+            NotificationCompat.Builder(this, channelId)
+                .setContentTitle("OBDIOT ativo")
+                .setContentText("Rastreando localização em segundo plano")
+                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                .setOngoing(true)
+                .build()
 
         startForeground(1, notification)
     }
@@ -85,6 +95,7 @@ class OBDIOTService : Service() {
         ).build()
 
         locationCallback = object : LocationCallback() {
+
             override fun onLocationResult(result: LocationResult) {
 
                 val loc = result.lastLocation ?: return
@@ -114,9 +125,73 @@ class OBDIOTService : Service() {
         )
     }
 
+    private fun listenCommands() {
+
+        controlRef.child("vibrador")
+            .addValueEventListener(object : ValueEventListener {
+
+                override fun onDataChange(snapshot: DataSnapshot) {
+
+                    val vibrar =
+                        snapshot.getValue(Boolean::class.java) ?: false
+
+                    if (vibrar && !isVibrating) {
+
+                        isVibrating = true
+
+                        statusRef.child("vibradorAtivo")
+                            .setValue(true)
+
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
+                            vibrator.vibrate(
+                                VibrationEffect.createOneShot(
+                                    5000,
+                                    VibrationEffect.DEFAULT_AMPLITUDE
+                                )
+                            )
+
+                        } else {
+
+                            @Suppress("DEPRECATION")
+                            vibrator.vibrate(5000)
+                        }
+
+                        Handler(Looper.getMainLooper())
+                            .postDelayed({
+
+                                isVibrating = false
+
+                                controlRef.child("vibrador")
+                                    .setValue(false)
+
+                                statusRef.child("vibradorAtivo")
+                                    .setValue(false)
+
+                            }, 5000)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {}
+            })
+    }
+
     private fun getBattery(): Int {
-        val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
-        return bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+
+        val bm =
+            getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+
+        return bm.getIntProperty(
+            BatteryManager.BATTERY_PROPERTY_CAPACITY
+        )
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        if (::locationCallback.isInitialized) {
+            fusedLocationClient.removeLocationUpdates(locationCallback)
+        }
     }
 
     override fun onBind(intent: Intent?) = null

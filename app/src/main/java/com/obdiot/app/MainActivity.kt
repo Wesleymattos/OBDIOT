@@ -1,8 +1,8 @@
 package com.obdiot.app
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,15 +13,40 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
-
-
-
-import android.app.AlertDialog
-import android.net.Uri
 import com.google.firebase.database.FirebaseDatabase
-private val APP_VERSION = 1
+
+import android.os.Vibrator
+import android.os.VibrationEffect
+import android.content.Context
+
+private const val APP_VERSION = 1
+
 class MainActivity : ComponentActivity() {
+
+    @Volatile
+    private var userName = "Usuário"
+
+    @Volatile
+    private var userIcon = "car"
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        checkForUpdates()
+
+        setContent {
+            OBDIOTApp(
+                onUserSet = { name, icon ->
+                    userName = name
+                    userIcon = icon
+                },
+                onStartService = {
+                    vibratePhone()
+                    requestPermissionsAndStartService()
+                }
+            )
+        }
+    }
 
     private fun checkForUpdates() {
 
@@ -36,7 +61,7 @@ class MainActivity : ComponentActivity() {
                 val apkUrl =
                     snap.child("apkUrl").getValue(String::class.java) ?: ""
 
-                if (serverVersion > APP_VERSION) {
+                if (serverVersion > APP_VERSION && apkUrl.isNotEmpty()) {
 
                     AlertDialog.Builder(this)
                         .setTitle("Atualização disponível")
@@ -56,40 +81,13 @@ class MainActivity : ComponentActivity() {
             }
     }
 
-
-    @Volatile private var userName = "Usuário"
-    @Volatile private var userIcon = "car"
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        checkForUpdates()
-
-
-
-
-
-
-        setContent {
-            OBDIOTApp(
-                onUserSet = { name, icon ->
-                    userName = name
-                    userIcon = icon
-                },
-                onStartService = {
-                    requestPermissionsAndStartService()
-                }
-            )
-        }
-    }
-
-    // =========================
-    // PERMISSÕES
-    // =========================
     private val permissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { result ->
 
-            val fine = result[Manifest.permission.ACCESS_FINE_LOCATION] == true
+            val fine =
+                result[Manifest.permission.ACCESS_FINE_LOCATION] == true
 
             if (fine) {
                 startServiceGPS()
@@ -106,9 +104,6 @@ class MainActivity : ComponentActivity() {
         permissionLauncher.launch(permissions)
     }
 
-    // =========================
-    // INICIA SERVICE (SEGUNDO PLANO)
-    // =========================
     private fun startServiceGPS() {
 
         val intent = Intent(this, OBDIOTService::class.java).apply {
@@ -118,11 +113,28 @@ class MainActivity : ComponentActivity() {
 
         startForegroundService(intent)
     }
-}
 
-/* =========================================================
-   UI SIMPLES (LOGIN + START SERVICE)
-   ========================================================= */
+    private fun vibratePhone() {
+
+        val vibrator =
+            getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+
+            vibrator.vibrate(
+                VibrationEffect.createOneShot(
+                    300,
+                    VibrationEffect.DEFAULT_AMPLITUDE
+                )
+            )
+
+        } else {
+
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(300)
+        }
+    }
+}
 
 @Composable
 fun OBDIOTApp(
@@ -131,7 +143,10 @@ fun OBDIOTApp(
 ) {
 
     MaterialTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
+
+        Surface(
+            modifier = Modifier.fillMaxSize()
+        ) {
 
             var logged by remember { mutableStateOf(false) }
             var name by remember { mutableStateOf("") }
@@ -147,9 +162,13 @@ fun OBDIOTApp(
 
                     Text("📡 Rastreamento ativo em segundo plano")
 
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                    Button(onClick = { logged = false }) {
+                    Button(
+                        onClick = {
+                            logged = false
+                        }
+                    ) {
                         Text("Sair")
                     }
                 }
@@ -165,48 +184,54 @@ fun OBDIOTApp(
                 ) {
 
                     Text(
-                        "🚗 OBDIOT",
+                        text = "🚗 OBDIOT",
                         style = MaterialTheme.typography.headlineMedium
                     )
 
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
-                        label = { Text("Seu nome") }
+                        label = {
+                            Text("Seu nome")
+                        }
                     )
 
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Row {
 
-                        Button(onClick = {
-                            icon = "car"
-                            onUserSet(name, icon)
-                        }) {
+                        Button(
+                            onClick = {
+                                icon = "car"
+                                onUserSet(name, icon)
+                            }
+                        ) {
                             Text("🚗 Carro")
                         }
 
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
 
-                        Button(onClick = {
-                            icon = "walk"
-                            onUserSet(name, icon)
-                        }) {
+                        Button(
+                            onClick = {
+                                icon = "walk"
+                                onUserSet(name, icon)
+                            }
+                        ) {
                             Text("🚶 Pedestre")
                         }
                     }
 
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                    Button(onClick = {
-                        onUserSet(name, icon)
-                        logged = true
-
-                        // 🔥 AQUI É O PONTO PRINCIPAL
-                        onStartService()
-                    }) {
+                    Button(
+                        onClick = {
+                            onUserSet(name, icon)
+                            logged = true
+                            onStartService()
+                        }
+                    ) {
                         Text("Entrar no sistema")
                     }
                 }

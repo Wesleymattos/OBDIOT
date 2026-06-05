@@ -1,4 +1,4 @@
 package com.obdiot.app
 
-class BluetoothActivity {
+class `BluetoothActivity.kt` {
 }

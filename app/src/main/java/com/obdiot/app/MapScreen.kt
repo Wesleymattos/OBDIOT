@@ -21,10 +21,6 @@ import org.osmdroid.views.overlay.Marker
 import androidx.preference.PreferenceManager
 import androidx.core.content.ContextCompat
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.res.painterResource
-
 @Composable
 fun MapScreen() {
 
@@ -55,22 +51,6 @@ fun MapScreen() {
     var battery by remember { mutableStateOf(0) }
 
     var firstLoad by remember { mutableStateOf(true) }
-    var showBluetooth by remember { mutableStateOf(false) }
-
-    var bluetoothConnected by remember {
-        mutableStateOf(false)
-    }
-
-    if (showBluetooth) {
-
-        BluetoothScreen(
-            onBack = {
-                showBluetooth = false
-            }
-        )
-
-        return
-    }
 
     // ================= MAP INIT =================
     AndroidView(
@@ -210,40 +190,18 @@ fun MapScreen() {
     ) {
 
         // ===== TOP PANEL =====
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color.White.copy(alpha = 0.9f))
-                .padding(10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(10.dp)
         ) {
-
-            Column {
-
-                Text("Usuário: $selectedUserName")
-                Text("Velocidade: ${String.format("%.1f", speed)} km/h")
-                Text("Bateria: $battery%")
-
-            }
-
-            Image(
-                painter = painterResource(
-                    id = if (bluetoothConnected)
-                        R.drawable.bluetooth_blue
-                    else
-                        R.drawable.bluetooth_gray
-                ),
-                contentDescription = "Bluetooth",
-                modifier = Modifier
-                    .size(48.dp)
-                    .clickable {
-                        showBluetooth = true
-                    }
-            )
+            Text("Usuário: $selectedUserName")
+            Text("Velocidade: ${String.format("%.1f", speed)} km/h")
+            Text("Bateria: $battery%")
         }
 
-              // ===== BOTÕES =====
+        // ===== BOTÕES =====
         Column(
             modifier = Modifier
                 .fillMaxWidth()

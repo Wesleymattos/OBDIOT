@@ -20,7 +20,7 @@ import com.obdiot.app.MapScreen
 import android.os.Vibrator
 import android.os.VibrationEffect
 import android.content.Context
-import android.os.Build
+
 private const val APP_VERSION = 4
 
 class MainActivity : ComponentActivity() {
@@ -33,17 +33,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-
-            permissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.BLUETOOTH_CONNECT,
-                    Manifest.permission.BLUETOOTH_SCAN,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                )
-            )
-        }
 
         Configuration.getInstance().userAgentValue = packageName
 
@@ -104,14 +93,8 @@ class MainActivity : ComponentActivity() {
             val fine =
                 result[Manifest.permission.ACCESS_FINE_LOCATION] == true
 
-            val bluetoothConnect =
-                result[Manifest.permission.BLUETOOTH_CONNECT] == true
-
-            val bluetoothScan =
-                result[Manifest.permission.BLUETOOTH_SCAN] == true
-
-            if (fine || (bluetoothConnect && bluetoothScan)) {
-                // permissões concedidas
+            if (fine) {
+                startServiceGPS()
             }
         }
 

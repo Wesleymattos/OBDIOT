@@ -21,7 +21,7 @@ import android.os.Vibrator
 import android.os.VibrationEffect
 import android.content.Context
 
-private const val APP_VERSION = 4
+private const val APP_VERSION = 5
 
 class MainActivity : ComponentActivity() {
 

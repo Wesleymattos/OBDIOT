@@ -153,14 +153,28 @@ fun OBDIOTApp(
         ) {
 
             var logged by remember { mutableStateOf(false) }
-            var showMap by remember { mutableStateOf(false) }
+            var currentScreen by remember {
+                mutableStateOf("login")
+            }
 
             var name by remember { mutableStateOf("") }
             var icon by remember { mutableStateOf("car") }
 
-            if (showMap) {
-                MapScreen()
-                return@Surface
+            when (currentScreen) {
+
+                "map" -> {
+                    MapScreen()
+                    return@Surface
+                }
+
+                "obd" -> {
+                    ObdScreen(
+                        onBack = {
+                            currentScreen = "login"
+                        }
+                    )
+                    return@Surface
+                }
             }
 
             if (logged) {
@@ -242,10 +256,20 @@ fun OBDIOTApp(
                             logged = true
                             onStartService()
 
-                            showMap = true
+                            currentScreen = "map"
                         }
                     ){
                         Text("Entrar no sistema")
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Button(
+                            onClick = {
+                                currentScreen = "obd"
+                            }
+                        ) {
+                            Text("Abrir OBD-II")
+                        }
                     }
                 }
             }

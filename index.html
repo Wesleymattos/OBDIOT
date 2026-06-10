@@ -1,56 +1,173 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
   <meta charset="utf-8" />
-  <title>OBDIOT Tracker (Real Time)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OBDIOT | Central de Rastreamento</title>
 
+  <!-- Leaflet & Fonts -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 
   <style>
-    #map {
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: #f0f2f5;
+      display: flex;
       height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Barra Lateral */
+    #sidebar {
+      width: 300px;
+      background: #ffffff;
+      border-right: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      z-index: 1000;
+    }
+
+    .sidebar-header {
+      padding: 20px;
+      background: #1a73e8;
+      color: white;
+      font-weight: 600;
+      font-size: 1.2rem;
+    }
+
+    #userList {
+      flex: 1;
+      overflow-y: auto;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .user-item {
+      padding: 15px 20px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .user-item:hover { background: #f8f9fa; }
+    .user-item.active { background: #e8f0fe; border-left: 4px solid #1a73e8; }
+    .user-item b { display: block; color: #333; }
+    .user-item span { font-size: 0.85rem; color: #666; }
+
+    /* Área do Mapa */
+    #map-container {
+      flex: 1;
+      position: relative;
+    }
+
+    #map {
+      height: 100%;
       width: 100%;
     }
 
-    #vibBtn, #flashBtn {
+    /* Botões Flutuantes */
+    .controls {
       position: absolute;
-      right: 20px;
-      z-index: 9999;
-      padding: 15px 20px;
-      border: none;
-      border-radius: 12px;
-      font-size: 16px;
-      color: white;
-      cursor: pointer;
-    }
-
-    #vibBtn {
       top: 20px;
-      background: red;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 1000;
     }
 
-    #flashBtn {
-      top: 80px;
-      background: black;
+    .btn-float {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: transform 0.2s;
     }
+
+    .btn-float:active { transform: scale(0.95); }
+
+    /* Painel de Diagnóstico */
+    #obd-panel {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 280px;
+      background: white;
+      border-radius: 12px;
+      padding: 15px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      z-index: 1000;
+      display: none; /* Só aparece quando seleciona usuário */
+    }
+
+    .obd-title {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #1a73e8;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 5px;
+    }
+
+    .obd-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .obd-stat {
+      font-size: 0.85rem;
+      background: #f8f9fa;
+      padding: 8px;
+      border-radius: 6px;
+    }
+
+    .obd-stat b { display: block; font-size: 1rem; color: #333; }
   </style>
 </head>
 
 <body>
 
-<div id="map"></div>
+<div id="sidebar">
+  <div class="sidebar-header">OBDIOT Tracker</div>
+  <ul id="userList">
+    <li style="padding: 20px; color: #999;">Aguardando conexão...</li>
+  </ul>
+</div>
 
-<button id="vibBtn">VIBRADOR OFF</button>
-<button id="flashBtn">LANTERNA OFF</button>
+<div id="map-container">
+  <div id="map"></div>
+
+  <div class="controls">
+    <button id="vibBtn" class="btn-float" style="background: #ea4335; color: white;">Vibrador: OFF</button>
+    <button id="flashBtn" class="btn-float" style="background: #3c4043; color: white;">Lanterna: OFF</button>
+  </div>
+
+  <div id="obd-panel">
+    <div class="obd-title">📊 Diagnóstico: <span id="obd-user-name">---</span></div>
+    <div class="obd-grid">
+      <div class="obd-stat">Motor <b><span id="v-rpm">--</span> RPM</b></div>
+      <div class="obd-stat">Veloc. Real <b><span id="v-speed">--</span> km/h</b></div>
+      <div class="obd-stat">Consumo <b><span id="v-cons">--</span> km/L</b></div>
+      <div class="obd-stat">Bateria <b><span id="v-volt">--</span></b></div>
+      <div class="obd-stat">Temp. <b><span id="v-temp">--</span> °C</b></div>
+      <div class="obd-stat">Tanque <b><span id="v-fuel">--</span> %</b></div>
+    </div>
+  </div>
+</div>
 
 <script>
   // =========================
-  // 🔥 FIREBASE INIT
+  // 🔥 CONFIG & FIREBASE
   // =========================
   const firebaseConfig = {
     apiKey: "AIzaSyA4z1-kAAGh6dq6nPf3ycHYVrb-gwCJnfU",
@@ -63,146 +180,115 @@
   };
 
   firebase.initializeApp(firebaseConfig);
-
   const db = firebase.database();
-  const auth = firebase.auth();
+
+  firebase.auth().signInAnonymously().catch(e => console.error(e));
 
   // =========================
-  // 🔐 AUTH (OBRIGATÓRIO)
+  // 🗺 MAPA SETUP
   // =========================
-  auth.signInAnonymously()
-    .then(() => {
-      console.log("🔥 Firebase Auth OK (anônimo)");
-    })
-    .catch((e) => {
-      console.error("❌ Auth erro:", e);
-    });
+  const map = L.map('map', { zoomControl: false }).setView([-23.55, -46.63], 15);
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-  // =========================
-  // 🗺 MAPA
-  // =========================
-  const map = L.map('map').setView([-29.84, -50.88], 20);
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap'
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; CartoDB'
   }).addTo(map);
 
   const markers = {};
-  let followedUser = null;
+  let selectedId = null;
 
-const carIcon = L.icon({
-  iconUrl: "https://cdn-icons-png.flaticon.com/512/744/744465.png",
-  iconSize: [60, 60]
-});
+  const carIcon = L.icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/744/744465.png",
+    iconSize: [50, 50], iconAnchor: [25, 25]
+  });
 
-const walkIcon = L.icon({
-  iconUrl: "https://cdn-icons-png.flaticon.com/512/1946/1946429.png",
-  iconSize: [55, 55]
-});
+  const walkIcon = L.icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/1946/1946429.png",
+    iconSize: [45, 45], iconAnchor: [22, 22]
+  });
 
   // =========================
-  // 🔥 VIBRADOR GLOBAL
+  // 👥 LÓGICA DE USUÁRIOS
+  // =========================
+  db.ref("users").on("value", snap => {
+    const users = snap.val();
+    const list = document.getElementById("userList");
+    list.innerHTML = "";
+
+    if (!users) {
+        list.innerHTML = `<li style="padding:20px; color:#999;">Nenhum usuário online</li>`;
+        return;
+    }
+
+    Object.keys(users).forEach(id => {
+      const u = users[id];
+      const li = document.createElement("li");
+      li.className = `user-item ${selectedId === id ? 'active' : ''}`;
+      li.innerHTML = `<b>${u.name || 'Usuário'}</b><span>${u.model || 'Celular'} • Bat: ${u.battery}%</span>`;
+      
+      li.onclick = () => selectUser(id, u);
+      list.appendChild(li);
+
+      updateMarker(id, u);
+    });
+  });
+
+  function updateMarker(id, u) {
+    if (!u.lat || !u.lng) return;
+    const pos = [u.lat, u.lng];
+
+    if (markers[id]) {
+      markers[id].setLatLng(pos);
+    } else {
+      const icon = u.icon === "car" ? carIcon : walkIcon;
+      markers[id] = L.marker(pos, { icon }).addTo(map);
+      markers[id].on('click', () => selectUser(id, u));
+    }
+
+    if (selectedId === id) {
+      map.panTo(pos);
+      updateObdPanel(u);
+    }
+  }
+
+  function selectUser(id, u) {
+    selectedId = id;
+    map.flyTo([u.lat, u.lng], 18);
+    document.getElementById("obd-panel").style.display = "block";
+    document.getElementById("obd-user-name").innerText = u.name;
+    updateObdPanel(u);
+  }
+
+  function updateObdPanel(u) {
+    const o = u.obd || {};
+    document.getElementById("v-rpm").innerText = o.rpm || "--";
+    document.getElementById("v-speed").innerText = o.speed || "--";
+    document.getElementById("v-cons").innerText = o.instantConsumption || "--";
+    document.getElementById("v-volt").innerText = o.volt || "--";
+    document.getElementById("v-temp").innerText = o.temp || "--";
+    document.getElementById("v-fuel").innerText = o.fuelLevel || "--";
+  }
+
+  // =========================
+  // 🔦 CONTROLES (Vibra/Flash)
   // =========================
   const vibRef = db.ref("control/vibrador");
-  const vibStatusRef = db.ref("status/vibradorAtivo");
-
-  document.getElementById("vibBtn").onclick = () => {
-    vibRef.once("value").then(snap => {
-      vibRef.set(!(snap.val() === true));
-    });
-  };
-
-  vibStatusRef.on("value", snap => {
-    const isOn = snap.val() === true;
-    const btn = document.getElementById("vibBtn");
-
-    btn.style.background = isOn ? "green" : "red";
-    btn.innerText = isOn ? "VIBRADOR ON" : "VIBRADOR OFF";
-  });
-
-  // =========================
-  // 👥 USERS
-  // =========================
-  const usersRef = db.ref("users");
-
-  usersRef.on("child_added", snap => updateUser(snap.key, snap.val()));
-  usersRef.on("child_changed", snap => updateUser(snap.key, snap.val()));
-
-  usersRef.on("child_removed", snap => {
-    const id = snap.key;
-    if (markers[id]) {
-      map.removeLayer(markers[id]);
-      delete markers[id];
-    }
-  });
-
-  function toggleUser(userId) {
-    const ref = db.ref("control/users/" + userId);
-
-    ref.once("value").then(snap => {
-      ref.set(!(snap.val() === true));
-    });
-  }
-  
-  function followUser(userId) {
-
-  followedUser = userId;
-
-  alert("Agora seguindo este usuário.");
-}
-
-  function updateUser(id, u) {
-    if (!u || u.lat == null || u.lng == null) return;
-
-    const pos = [Number(u.lat), Number(u.lng)];
-
-    if (followedUser === id) {
-        map.flyTo(pos, map.getZoom(), {
-    animate: true,
-    duration: 0.5
-});
-    }
-
-    const icon = (u.icon === "car") ? carIcon : walkIcon;
-
-    const popup = `
-  <b>${u.name || "Sem nome"}</b><br>
-  📱 ${u.model || "Desconhecido"}<br>
-  ⚡ ${(u.speed || 0).toFixed(1)} km/h<br>
-  🔋 ${u.battery || "?"}%<br><br>
-
-  <button onclick="followUser('${id}')"
-    style="padding:6px 10px;border:none;border-radius:6px;background:#0066ff;color:white;cursor:pointer;">
-    ⚓ Seguir usuário
-  </button>
-`;
-    if (markers[id]) {
-        markers[id].setLatLng(pos);
-        markers[id].setPopupContent(popup);
-    } else {
-        markers[id] = L.marker(pos, { icon })
-            .addTo(map)
-            .bindPopup(popup);
-    }
-}
-  // =========================
-  // 🔦 LANTERNA
-  // =========================
   const flashRef = db.ref("control/flashlight");
 
-  document.getElementById("flashBtn").onclick = () => {
-    flashRef.once("value").then(snap => {
-      flashRef.set(!(snap.val() === true));
-    });
-  };
+  document.getElementById("vibBtn").onclick = () => vibRef.transaction(v => !v);
+  document.getElementById("flashBtn").onclick = () => flashRef.transaction(v => !v);
 
-  flashRef.on("value", snap => {
-    const isOn = snap.val() === true;
-    const btn = document.getElementById("flashBtn");
+  db.ref("status").on("value", snap => {
+    const s = snap.val() || {};
+    const vBtn = document.getElementById("vibBtn");
+    const fBtn = document.getElementById("flashBtn");
 
-    btn.style.background = isOn ? "yellow" : "black";
-    btn.style.color = isOn ? "black" : "white";
-    btn.innerText = isOn ? "LANTERNA ON" : "LANTERNA OFF";
+    vBtn.style.background = s.vibradorAtivo ? "#4caf50" : "#ea4335";
+    vBtn.innerText = `Vibrador: ${s.vibradorAtivo ? 'ON' : 'OFF'}`;
+
+    fBtn.style.background = s.flashAtivo ? "#fbbc04" : "#3c4043";
+    fBtn.style.color = s.flashAtivo ? "black" : "white";
+    fBtn.innerText = `Lanterna: ${s.flashAtivo ? 'ON' : 'OFF'}`;
   });
 
 </script>

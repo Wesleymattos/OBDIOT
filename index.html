@@ -3,11 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OBDIOT | Central de Rastreamento</title>
+  <title>OBDIOT Pro | Telemetria em Tempo Real</title>
 
-  <!-- Leaflet & Fonts -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -15,160 +14,205 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 
   <style>
+    :root {
+      --primary: #1a73e8;
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f8fafc;
+      --accent: #38bdf8;
+    }
+
     body {
       margin: 0;
       font-family: 'Inter', sans-serif;
-      background: #f0f2f5;
+      background: var(--bg);
+      color: var(--text);
       display: flex;
       height: 100vh;
-      overflow: hidden;
     }
 
-    /* Barra Lateral */
+    /* Sidebar Esquerda */
     #sidebar {
-      width: 300px;
-      background: #ffffff;
-      border-right: 1px solid #ddd;
+      width: 350px;
+      background: var(--card);
+      border-right: 1px solid #334155;
       display: flex;
       flex-direction: column;
       z-index: 1000;
     }
 
-    .sidebar-header {
-      padding: 20px;
-      background: #1a73e8;
-      color: white;
-      font-weight: 600;
-      font-size: 1.2rem;
+    .header {
+      padding: 25px;
+      background: linear-gradient(135deg, #1a73e8, #0052cc);
+      text-align: center;
     }
 
-    #userList {
+    .header h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
+
+    /* Painel de Dados Ativo */
+    #telemetry-board {
+      padding: 20px;
       flex: 1;
       overflow-y: auto;
-      list-style: none;
-      padding: 0;
-      margin: 0;
     }
 
-    .user-item {
-      padding: 15px 20px;
-      border-bottom: 1px solid #eee;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .user-item:hover { background: #f8f9fa; }
-    .user-item.active { background: #e8f0fe; border-left: 4px solid #1a73e8; }
-    .user-item b { display: block; color: #333; }
-    .user-item span { font-size: 0.85rem; color: #666; }
-
-    /* Área do Mapa */
-    #map-container {
-      flex: 1;
-      position: relative;
-    }
-
-    #map {
-      height: 100%;
-      width: 100%;
-    }
-
-    /* Botões Flutuantes */
-    .controls {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      z-index: 1000;
-    }
-
-    .btn-float {
-      padding: 12px 20px;
-      border: none;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      transition: transform 0.2s;
-    }
-
-    .btn-float:active { transform: scale(0.95); }
-
-    /* Painel de Diagnóstico */
-    #obd-panel {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      width: 280px;
-      background: white;
-      border-radius: 12px;
-      padding: 15px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-      z-index: 1000;
-      display: none; /* Só aparece quando seleciona usuário */
-    }
-
-    .obd-title {
-      font-weight: 600;
-      margin-bottom: 10px;
-      color: #1a73e8;
-      border-bottom: 1px solid #eee;
+    .section-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+      margin: 20px 0 10px 0;
+      border-bottom: 1px solid #334155;
       padding-bottom: 5px;
     }
 
-    .obd-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+    .stat-card {
+      background: #0f172a;
+      padding: 15px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stat-label { font-size: 0.85rem; color: #94a3b8; }
+    .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 700; color: #fff; }
+    .stat-value.highlight { color: #fbbf24; font-size: 1.4rem; }
+
+    /* Mapa */
+    #map-container { flex: 1; position: relative; }
+    #map { height: 100%; width: 100%; }
+
+    /* Controles Remotos */
+    .remote-actions {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
       gap: 10px;
     }
 
-    .obd-stat {
-      font-size: 0.85rem;
-      background: #f8f9fa;
-      padding: 8px;
-      border-radius: 6px;
+    .action-btn {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 50px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+      transition: all 0.3s;
     }
 
-    .obd-stat b { display: block; font-size: 1rem; color: #333; }
+    /* Rodapé com lista de usuários */
+    #user-selector {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      background: rgba(30, 41, 59, 0.9);
+      backdrop-filter: blur(10px);
+      padding: 10px;
+      border-radius: 15px;
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      z-index: 1000;
+    }
+
+    .user-pill {
+      padding: 8px 20px;
+      background: #334155;
+      border-radius: 50px;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: 0.3s;
+      border: 1px solid transparent;
+    }
+
+    .user-pill.active { background: var(--primary); border-color: var(--accent); }
   </style>
 </head>
 
 <body>
 
 <div id="sidebar">
-  <div class="sidebar-header">OBDIOT Tracker</div>
-  <ul id="userList">
-    <li style="padding: 20px; color: #999;">Aguardando conexão...</li>
-  </ul>
+  <div class="header">
+    <h1>OBDIOT PRO</h1>
+    <div style="font-size: 0.8rem; opacity: 0.8;">Onix 1.0 2018 Dashboard</div>
+  </div>
+
+  <div id="telemetry-board">
+    <div class="section-title">📍 Localização & GPS</div>
+    <div class="stat-card">
+      <span class="stat-label">Usuário Ativo</span>
+      <span class="stat-value" id="d-name">--</span>
+    </div>
+    <div class="stat-card" style="border-left: 4px solid #fbbf24;">
+      <span class="stat-label">Velocidade GPS</span>
+      <span class="stat-value highlight" id="d-speed-gps">0.0 km/h</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Bateria Celular</span>
+      <span class="stat-value" id="d-phone-bat">--%</span>
+    </div>
+
+    <div class="section-title">🚗 Motor & OBD-II</div>
+    <div class="stat-card">
+      <span class="stat-label">Rotação (RPM)</span>
+      <span class="stat-value" id="d-rpm">--</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Veloc. Painel</span>
+      <span class="stat-value" id="d-speed-obd">-- km/h</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Tensão Bateria</span>
+      <span class="stat-value" id="d-volt" style="color: #4ade80;">--</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Temp. Motor</span>
+      <span class="stat-value" id="d-temp">-- °C</span>
+    </div>
+
+    <div class="section-title">⛽ Consumo & Viagem</div>
+    <div class="stat-card">
+      <span class="stat-label">Consumo Inst.</span>
+      <span class="stat-value" id="d-cons-inst">-- km/L</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Consumo Médio</span>
+      <span class="stat-value" id="d-cons-avg">-- km/L</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Distância</span>
+      <span class="stat-value" id="d-dist">-- km</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Litros Usados</span>
+      <span class="stat-value" id="d-fuel-used">-- L</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Nível Tanque</span>
+      <span class="stat-value" id="d-fuel-lv">-- %</span>
+    </div>
+  </div>
 </div>
 
 <div id="map-container">
   <div id="map"></div>
 
-  <div class="controls">
-    <button id="vibBtn" class="btn-float" style="background: #ea4335; color: white;">Vibrador: OFF</button>
-    <button id="flashBtn" class="btn-float" style="background: #3c4043; color: white;">Lanterna: OFF</button>
+  <div class="remote-actions">
+    <button id="vibBtn" class="action-btn" style="background: #ef4444; color: white;">VIB: OFF</button>
+    <button id="flashBtn" class="action-btn" style="background: #f59e0b; color: #000;">FLASH: OFF</button>
   </div>
 
-  <div id="obd-panel">
-    <div class="obd-title">📊 Diagnóstico: <span id="obd-user-name">---</span></div>
-    <div class="obd-grid">
-      <div class="obd-stat">Motor <b><span id="v-rpm">--</span> RPM</b></div>
-      <div class="obd-stat">Veloc. Real <b><span id="v-speed">--</span> km/h</b></div>
-      <div class="obd-stat">Consumo <b><span id="v-cons">--</span> km/L</b></div>
-      <div class="obd-stat">Bateria <b><span id="v-volt">--</span></b></div>
-      <div class="obd-stat">Temp. <b><span id="v-temp">--</span> °C</b></div>
-      <div class="obd-stat">Tanque <b><span id="v-fuel">--</span> %</b></div>
-    </div>
+  <div id="user-selector">
+    <!-- Pílulas de usuários entram aqui -->
   </div>
 </div>
 
 <script>
-  // =========================
-  // 🔥 CONFIG & FIREBASE
-  // =========================
   const firebaseConfig = {
     apiKey: "AIzaSyA4z1-kAAGh6dq6nPf3ycHYVrb-gwCJnfU",
     authDomain: "obdiot.firebaseapp.com",
@@ -181,97 +225,76 @@
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
+  firebase.auth().signInAnonymously();
 
-  firebase.auth().signInAnonymously().catch(e => console.error(e));
-
-  // =========================
-  // 🗺 MAPA SETUP
-  // =========================
   const map = L.map('map', { zoomControl: false }).setView([-23.55, -46.63], 15);
-  L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; CartoDB'
-  }).addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
   const markers = {};
   let selectedId = null;
 
   const carIcon = L.icon({
     iconUrl: "https://cdn-icons-png.flaticon.com/512/744/744465.png",
-    iconSize: [50, 50], iconAnchor: [25, 25]
+    iconSize: [50, 50]
   });
 
-  const walkIcon = L.icon({
-    iconUrl: "https://cdn-icons-png.flaticon.com/512/1946/1946429.png",
-    iconSize: [45, 45], iconAnchor: [22, 22]
-  });
-
-  // =========================
-  // 👥 LÓGICA DE USUÁRIOS
-  // =========================
   db.ref("users").on("value", snap => {
     const users = snap.val();
-    const list = document.getElementById("userList");
-    list.innerHTML = "";
+    const selector = document.getElementById("user-selector");
+    selector.innerHTML = "";
 
-    if (!users) {
-        list.innerHTML = `<li style="padding:20px; color:#999;">Nenhum usuário online</li>`;
-        return;
-    }
+    if (!users) return;
 
     Object.keys(users).forEach(id => {
       const u = users[id];
-      const li = document.createElement("li");
-      li.className = `user-item ${selectedId === id ? 'active' : ''}`;
-      li.innerHTML = `<b>${u.name || 'Usuário'}</b><span>${u.model || 'Celular'} • Bat: ${u.battery}%</span>`;
       
-      li.onclick = () => selectUser(id, u);
-      list.appendChild(li);
+      // Criar Pílula
+      const pill = document.createElement("div");
+      pill.className = `user-pill ${selectedId === id ? 'active' : ''}`;
+      pill.innerText = u.name || "Usuário";
+      pill.onclick = () => { selectedId = id; updateUI(u); };
+      selector.appendChild(pill);
 
-      updateMarker(id, u);
+      // Atualizar Marcador no Mapa
+      const pos = [u.lat, u.lng];
+      if (markers[id]) {
+        markers[id].setLatLng(pos);
+      } else {
+        markers[id] = L.marker(pos, { icon: carIcon }).addTo(map);
+        markers[id].on('click', () => { selectedId = id; updateUI(u); });
+        if (!selectedId) { selectedId = id; map.setView(pos, 18); }
+      }
+
+      if (selectedId === id) updateUI(u);
     });
   });
 
-  function updateMarker(id, u) {
-    if (!u.lat || !u.lng) return;
-    const pos = [u.lat, u.lng];
+  function updateUI(u) {
+    // Dados GPS
+    document.getElementById("d-name").innerText = u.name || "--";
+    document.getElementById("d-speed-gps").innerText = `${(u.speed || 0).toFixed(1)} km/h`;
+    document.getElementById("d-phone-bat").innerText = `${u.battery || 0}%`;
 
-    if (markers[id]) {
-      markers[id].setLatLng(pos);
-    } else {
-      const icon = u.icon === "car" ? carIcon : walkIcon;
-      markers[id] = L.marker(pos, { icon }).addTo(map);
-      markers[id].on('click', () => selectUser(id, u));
-    }
-
-    if (selectedId === id) {
-      map.panTo(pos);
-      updateObdPanel(u);
-    }
-  }
-
-  function selectUser(id, u) {
-    selectedId = id;
-    map.flyTo([u.lat, u.lng], 18);
-    document.getElementById("obd-panel").style.display = "block";
-    document.getElementById("obd-user-name").innerText = u.name;
-    updateObdPanel(u);
-  }
-
-  function updateObdPanel(u) {
+    // Dados OBD
     const o = u.obd || {};
-    document.getElementById("v-rpm").innerText = o.rpm || "--";
-    document.getElementById("v-speed").innerText = o.speed || "--";
-    document.getElementById("v-cons").innerText = o.instantConsumption || "--";
-    document.getElementById("v-volt").innerText = o.volt || "--";
-    document.getElementById("v-temp").innerText = o.temp || "--";
-    document.getElementById("v-fuel").innerText = o.fuelLevel || "--";
+    document.getElementById("d-rpm").innerText = o.rpm || "--";
+    document.getElementById("d-speed-obd").innerText = `${o.speed || "--"} km/h`;
+    document.getElementById("d-volt").innerText = o.volt || "--";
+    document.getElementById("d-temp").innerText = `${o.temp || "--"} °C`;
+    document.getElementById("d-cons-inst").innerText = `${o.instantConsumption || "--"} km/L`;
+    document.getElementById("d-cons-avg").innerText = `${o.averageConsumption || "--"} km/L`;
+    document.getElementById("d-fuel-lv").innerText = `${o.fuelLevel || "--"} %`;
+    
+    // Distância e Litros com formatação
+    const dist = parseFloat(o.distanceTraveled || 0);
+    const fuel = parseFloat(o.fuelUsed || 0);
+    document.getElementById("d-dist").innerText = `${dist.toFixed(2)} km`;
+    document.getElementById("d-fuel-used").innerText = `${fuel.toFixed(3)} L`;
+
+    if (u.lat && u.lng) map.panTo([u.lat, u.lng]);
   }
 
-  // =========================
-  // 🔦 CONTROLES (Vibra/Flash)
-  // =========================
+  // Controles
   const vibRef = db.ref("control/vibrador");
   const flashRef = db.ref("control/flashlight");
 
@@ -280,17 +303,11 @@
 
   db.ref("status").on("value", snap => {
     const s = snap.val() || {};
-    const vBtn = document.getElementById("vibBtn");
-    const fBtn = document.getElementById("flashBtn");
-
-    vBtn.style.background = s.vibradorAtivo ? "#4caf50" : "#ea4335";
-    vBtn.innerText = `Vibrador: ${s.vibradorAtivo ? 'ON' : 'OFF'}`;
-
-    fBtn.style.background = s.flashAtivo ? "#fbbc04" : "#3c4043";
-    fBtn.style.color = s.flashAtivo ? "black" : "white";
-    fBtn.innerText = `Lanterna: ${s.flashAtivo ? 'ON' : 'OFF'}`;
+    document.getElementById("vibBtn").innerText = `VIB: ${s.vibradorAtivo ? 'ON' : 'OFF'}`;
+    document.getElementById("vibBtn").style.background = s.vibradorAtivo ? "#22c55e" : "#ef4444";
+    document.getElementById("flashBtn").innerText = `FLASH: ${s.flashAtivo ? 'ON' : 'OFF'}`;
+    document.getElementById("flashBtn").style.background = s.flashAtivo ? "#fbbf24" : "#4b5563";
   });
-
 </script>
 
 </body>

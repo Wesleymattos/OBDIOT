@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OBDIOT Pro | Telemetria em Tempo Real</title>
+  <title>OBDIOT Pro | Telemetria Inteligente</title>
 
+  <!-- Leaflet & Fonts -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   
@@ -15,11 +16,26 @@
 
   <style>
     :root {
+      /* Tema Noite (Padrão) */
       --primary: #1a73e8;
       --bg: #0f172a;
       --card: #1e293b;
       --text: #f8fafc;
       --accent: #38bdf8;
+      --stat-bg: #0f172a;
+      --border: #334155;
+      --shadow: rgba(0,0,0,0.3);
+    }
+
+    body.day-mode {
+      /* Tema Dia (Automático) */
+      --bg: #f0f2f5;
+      --card: #ffffff;
+      --text: #1e293b;
+      --accent: #1a73e8;
+      --stat-bg: #f8f9fa;
+      --border: #e2e8f0;
+      --shadow: rgba(0,0,0,0.1);
     }
 
     body {
@@ -29,27 +45,29 @@
       color: var(--text);
       display: flex;
       height: 100vh;
+      transition: background 0.5s ease;
     }
 
-    /* Sidebar Esquerda */
+    /* Sidebar */
     #sidebar {
       width: 350px;
       background: var(--card);
-      border-right: 1px solid #334155;
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       z-index: 1000;
+      transition: background 0.5s ease;
     }
 
     .header {
       padding: 25px;
       background: linear-gradient(135deg, #1a73e8, #0052cc);
       text-align: center;
+      color: white;
     }
 
     .header h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
 
-    /* Painel de Dados Ativo */
     #telemetry-board {
       padding: 20px;
       flex: 1;
@@ -62,29 +80,30 @@
       letter-spacing: 1px;
       color: var(--accent);
       margin: 20px 0 10px 0;
-      border-bottom: 1px solid #334155;
+      border-bottom: 1px solid var(--border);
       padding-bottom: 5px;
     }
 
     .stat-card {
-      background: #0f172a;
+      background: var(--stat-bg);
       padding: 15px;
       border-radius: 12px;
       margin-bottom: 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      border: 1px solid var(--border);
     }
 
-    .stat-label { font-size: 0.85rem; color: #94a3b8; }
-    .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 700; color: #fff; }
-    .stat-value.highlight { color: #fbbf24; font-size: 1.4rem; }
+    .stat-label { font-size: 0.85rem; color: #64748b; }
+    .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 700; color: var(--text); }
+    .stat-value.highlight { color: #f59e0b; font-size: 1.4rem; }
 
     /* Mapa */
     #map-container { flex: 1; position: relative; }
     #map { height: 100%; width: 100%; }
 
-    /* Controles Remotos */
+    /* Controles */
     .remote-actions {
       position: absolute;
       top: 20px;
@@ -100,37 +119,38 @@
       border-radius: 50px;
       font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+      box-shadow: 0 10px 15px var(--shadow);
       transition: all 0.3s;
     }
 
-    /* Rodapé com lista de usuários */
     #user-selector {
       position: absolute;
       bottom: 20px;
       left: 20px;
       right: 20px;
-      background: rgba(30, 41, 59, 0.9);
-      backdrop-filter: blur(10px);
+      background: var(--card);
+      opacity: 0.95;
       padding: 10px;
       border-radius: 15px;
       display: flex;
       gap: 10px;
       overflow-x: auto;
       z-index: 1000;
+      border: 1px solid var(--border);
     }
 
     .user-pill {
       padding: 8px 20px;
-      background: #334155;
+      background: var(--stat-bg);
+      color: var(--text);
       border-radius: 50px;
       white-space: nowrap;
       cursor: pointer;
       transition: 0.3s;
-      border: 1px solid transparent;
+      border: 1px solid var(--border);
     }
 
-    .user-pill.active { background: var(--primary); border-color: var(--accent); }
+    .user-pill.active { background: var(--primary); color: white; border-color: var(--accent); }
   </style>
 </head>
 
@@ -139,16 +159,16 @@
 <div id="sidebar">
   <div class="header">
     <h1>OBDIOT PRO</h1>
-    <div style="font-size: 0.8rem; opacity: 0.8;">Onix 1.0 2018 Dashboard</div>
+    <div id="theme-status" style="font-size: 0.7rem; opacity: 0.9; margin-top: 5px;">MODO AUTOMÁTICO</div>
   </div>
 
   <div id="telemetry-board">
     <div class="section-title">📍 Localização & GPS</div>
     <div class="stat-card">
-      <span class="stat-label">Usuário Ativo</span>
+      <span class="stat-label">Condutor</span>
       <span class="stat-value" id="d-name">--</span>
     </div>
-    <div class="stat-card" style="border-left: 4px solid #fbbf24;">
+    <div class="stat-card" style="border-left: 4px solid #f59e0b;">
       <span class="stat-label">Velocidade GPS</span>
       <span class="stat-value highlight" id="d-speed-gps">0.0 km/h</span>
     </div>
@@ -157,9 +177,9 @@
       <span class="stat-value" id="d-phone-bat">--%</span>
     </div>
 
-    <div class="section-title">🚗 Motor & OBD-II</div>
+    <div class="section-title">🚗 Diagnóstico OBD (Onix)</div>
     <div class="stat-card">
-      <span class="stat-label">Rotação (RPM)</span>
+      <span class="stat-label">Rotação Engine</span>
       <span class="stat-value" id="d-rpm">--</span>
     </div>
     <div class="stat-card">
@@ -168,17 +188,17 @@
     </div>
     <div class="stat-card">
       <span class="stat-label">Tensão Bateria</span>
-      <span class="stat-value" id="d-volt" style="color: #4ade80;">--</span>
+      <span class="stat-value" id="d-volt" style="color: #22c55e;">--</span>
     </div>
     <div class="stat-card">
-      <span class="stat-label">Temp. Motor</span>
+      <span class="stat-label">Arrefecimento</span>
       <span class="stat-value" id="d-temp">-- °C</span>
     </div>
 
-    <div class="section-title">⛽ Consumo & Viagem</div>
+    <div class="section-title">⛽ Economia & Viagem</div>
     <div class="stat-card">
       <span class="stat-label">Consumo Inst.</span>
-      <span class="stat-value" id="d-cons-inst">-- km/L</span>
+      <span class="stat-value" id="d-cons-inst" style="color: #38bdf8;">-- km/L</span>
     </div>
     <div class="stat-card">
       <span class="stat-label">Consumo Médio</span>
@@ -189,7 +209,7 @@
       <span class="stat-value" id="d-dist">-- km</span>
     </div>
     <div class="stat-card">
-      <span class="stat-label">Litros Usados</span>
+      <span class="stat-label">Comb. Usado</span>
       <span class="stat-value" id="d-fuel-used">-- L</span>
     </div>
     <div class="stat-card">
@@ -207,12 +227,25 @@
     <button id="flashBtn" class="action-btn" style="background: #f59e0b; color: #000;">FLASH: OFF</button>
   </div>
 
-  <div id="user-selector">
-    <!-- Pílulas de usuários entram aqui -->
-  </div>
+  <div id="user-selector"></div>
 </div>
 
 <script>
+  // =========================
+  // 🌓 LÓGICA AUTOMÁTICA DIA/NOITE
+  // =========================
+  const hora = new Date().getHours();
+  const isDia = hora >= 6 && hora < 18;
+  if (isDia) {
+    document.body.classList.add('day-mode');
+    document.getElementById("theme-status").innerText = "MODO DIA ATIVO ☀️";
+  } else {
+    document.getElementById("theme-status").innerText = "MODO NOITE ATIVO 🌙";
+  }
+
+  // =========================
+  // 🔥 FIREBASE INIT
+  // =========================
   const firebaseConfig = {
     apiKey: "AIzaSyA4z1-kAAGh6dq6nPf3ycHYVrb-gwCJnfU",
     authDomain: "obdiot.firebaseapp.com",
@@ -227,8 +260,16 @@
   const db = firebase.database();
   firebase.auth().signInAnonymously();
 
+  // =========================
+  // 🗺 MAPA SETUP
+  // =========================
   const map = L.map('map', { zoomControl: false }).setView([-23.55, -46.63], 15);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+  
+  const tileUrl = isDia 
+    ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+  L.tileLayer(tileUrl, { attribution: '&copy; CartoDB' }).addTo(map);
 
   const markers = {};
   let selectedId = null;
@@ -238,6 +279,9 @@
     iconSize: [50, 50]
   });
 
+  // =========================
+  // 📊 SINCRONIZAÇÃO EM TEMPO REAL
+  // =========================
   db.ref("users").on("value", snap => {
     const users = snap.val();
     const selector = document.getElementById("user-selector");
@@ -248,14 +292,12 @@
     Object.keys(users).forEach(id => {
       const u = users[id];
       
-      // Criar Pílula
       const pill = document.createElement("div");
       pill.className = `user-pill ${selectedId === id ? 'active' : ''}`;
       pill.innerText = u.name || "Usuário";
       pill.onclick = () => { selectedId = id; updateUI(u); };
       selector.appendChild(pill);
 
-      // Atualizar Marcador no Mapa
       const pos = [u.lat, u.lng];
       if (markers[id]) {
         markers[id].setLatLng(pos);
@@ -270,12 +312,10 @@
   });
 
   function updateUI(u) {
-    // Dados GPS
     document.getElementById("d-name").innerText = u.name || "--";
     document.getElementById("d-speed-gps").innerText = `${(u.speed || 0).toFixed(1)} km/h`;
     document.getElementById("d-phone-bat").innerText = `${u.battery || 0}%`;
 
-    // Dados OBD
     const o = u.obd || {};
     document.getElementById("d-rpm").innerText = o.rpm || "--";
     document.getElementById("d-speed-obd").innerText = `${o.speed || "--"} km/h`;
@@ -285,7 +325,6 @@
     document.getElementById("d-cons-avg").innerText = `${o.averageConsumption || "--"} km/L`;
     document.getElementById("d-fuel-lv").innerText = `${o.fuelLevel || "--"} %`;
     
-    // Distância e Litros com formatação
     const dist = parseFloat(o.distanceTraveled || 0);
     const fuel = parseFloat(o.fuelUsed || 0);
     document.getElementById("d-dist").innerText = `${dist.toFixed(2)} km`;
@@ -294,10 +333,9 @@
     if (u.lat && u.lng) map.panTo([u.lat, u.lng]);
   }
 
-  // Controles
+  // Controles Remotos
   const vibRef = db.ref("control/vibrador");
   const flashRef = db.ref("control/flashlight");
-
   document.getElementById("vibBtn").onclick = () => vibRef.transaction(v => !v);
   document.getElementById("flashBtn").onclick = () => flashRef.transaction(v => !v);
 

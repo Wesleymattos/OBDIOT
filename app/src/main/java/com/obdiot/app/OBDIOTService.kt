@@ -25,7 +25,7 @@ class OBDIOTService : Service() {
     private lateinit var locationCallback: LocationCallback
 
     private val db = FirebaseDatabase.getInstance().getReference("users")
-    private val userId = "user_" + System.currentTimeMillis()
+    private var userId = "user_" + System.currentTimeMillis()
 
     private val controlRef =
         FirebaseDatabase.getInstance().getReference("control")
@@ -60,6 +60,7 @@ class OBDIOTService : Service() {
         startId: Int
     ): Int {
 
+        userId = intent?.getStringExtra("userId") ?: userId
         userName = intent?.getStringExtra("name") ?: "Usuário"
         userIcon = intent?.getStringExtra("icon") ?: "car"
 
@@ -125,7 +126,7 @@ class OBDIOTService : Service() {
                     "timestamp" to System.currentTimeMillis()
                 )
 
-                db.child(userId).setValue(data)
+                db.child(userId).updateChildren(data)
             }
         }
 

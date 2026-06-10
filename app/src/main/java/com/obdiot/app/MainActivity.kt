@@ -7,11 +7,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.google.firebase.database.FirebaseDatabase
 
@@ -21,7 +23,7 @@ import android.os.Vibrator
 import android.os.VibrationEffect
 import android.content.Context
 
-private const val APP_VERSION = 5
+private const val APP_VERSION = 6
 
 class MainActivity : ComponentActivity() {
 
@@ -30,6 +32,8 @@ class MainActivity : ComponentActivity() {
 
     @Volatile
     private var userIcon = "car"
+
+    private var userId: String = "user_" + System.currentTimeMillis()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,6 +44,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             OBDIOTApp(
+                userId = userId,
                 onUserSet = { name, icon ->
                     userName = name
                     userIcon = icon
@@ -111,6 +116,7 @@ class MainActivity : ComponentActivity() {
     private fun startServiceGPS() {
 
         val intent = Intent(this, OBDIOTService::class.java).apply {
+            putExtra("userId", userId)
             putExtra("name", userName)
             putExtra("icon", userIcon)
         }
@@ -142,6 +148,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun OBDIOTApp(
+    userId: String,
     onUserSet: (String, String) -> Unit,
     onStartService: () -> Unit
 ) {
@@ -163,7 +170,11 @@ fun OBDIOTApp(
             when (currentScreen) {
 
                 "map" -> {
-                    MapScreen()
+                    MapScreen(
+                        onBack = {
+                            currentScreen = "login"
+                        }
+                    )
                     return@Surface
                 }
 
@@ -208,8 +219,16 @@ fun OBDIOTApp(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
 
+                    Image(
+                        painter = painterResource(id = R.drawable.logo_app),
+                        contentDescription = "Logo App",
+                        modifier = Modifier.size(120.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     Text(
-                        text = "🚗 OBDIOT",
+                        text = "OBDIOT",
                         style = MaterialTheme.typography.headlineMedium
                     )
 
@@ -255,6 +274,9 @@ fun OBDIOTApp(
                             onUserSet(name, icon)
                             logged = true
                             onStartService()
+                            
+                            // Vincula o ID ao ObdManager para o Firebase
+                            ObdManager.setUserId(userId)
 
                             currentScreen = "map"
                         }

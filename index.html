@@ -151,6 +151,123 @@
     }
 
     .user-pill.active { background: var(--primary); color: white; border-color: var(--accent); }
+
+    /* =========================
+   📱 RESPONSIVO MOBILE
+========================= */
+@media (max-width: 768px) {
+
+  body {
+    flex-direction: column;
+    height: auto;
+    overflow-x: hidden;
+  }
+
+  #sidebar {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  #telemetry-board {
+    max-height: 45vh;
+    overflow-y: auto;
+  }
+
+  #map-container {
+    width: 100%;
+    height: 55vh;
+    min-height: 350px;
+  }
+
+  #map {
+    width: 100%;
+    height: 100%;
+  }
+
+  .remote-actions {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+
+  #user-selector {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    padding: 8px;
+  }
+
+  .user-pill {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+
+  .header {
+    padding: 18px;
+  }
+
+  .header h1 {
+    font-size: 1.3rem;
+  }
+
+  .stat-card {
+    padding: 12px;
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+  }
+
+  .stat-value {
+    font-size: 1rem;
+  }
+
+  .stat-value.highlight {
+    font-size: 1.2rem;
+  }
+}
+
+/* Celulares pequenos */
+@media (max-width: 480px) {
+
+  #telemetry-board {
+    padding: 12px;
+  }
+
+  .section-title {
+    font-size: 0.7rem;
+  }
+
+  .stat-card {
+    padding: 10px;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+  }
+
+  .stat-value {
+    font-size: 0.9rem;
+  }
+
+  .stat-value.highlight {
+    font-size: 1.1rem;
+  }
+
+  .action-btn {
+    flex: 1;
+    min-width: 120px;
+  }
+}
   </style>
 </head>
 

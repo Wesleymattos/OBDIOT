@@ -381,6 +381,15 @@
   // 🗺 MAPA SETUP
   // =========================
   const map = L.map('map', { zoomControl: false }).setView([-23.55, -46.63], 15);
+
+  // Corrige renderização do Leaflet em celulares
+setTimeout(() => {
+  map.invalidateSize();
+}, 500);
+
+window.addEventListener('resize', () => {
+  map.invalidateSize();
+});
   
   const tileUrl = isDia 
     ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
